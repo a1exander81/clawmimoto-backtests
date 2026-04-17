@@ -1,0 +1,12 @@
+{
+  "strategy": "Claw5MSniperManual",
+  "mode": "manual",
+  "timerange": "2026-03",
+  "pairs": ["BTC/USDT","ETH/USDT","SOL/USDT","BNB/USDT"],
+  "total_trades": 3,
+  "win_rate": 33.33,
+  "total_pnl_pct": -0.53,
+  "max_drawdown_pct": -1.13,
+  "sharpe_ratio": -0.45,
+  "generated_at": "2026-04-17T23:00:00+00:00"
+}

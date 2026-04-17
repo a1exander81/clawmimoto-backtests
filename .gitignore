@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/.vercel/
+
+# Env
+.env
+
+# Data
+backtests/**/*.csv
+
+# OS
+.DS_Store

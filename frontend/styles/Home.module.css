@@ -1,0 +1,20 @@
+.container{min-height:100vh;display:flex;flex-direction:column}
+.header{padding:2rem 2rem 1rem;text-align:center;border-bottom:1px solid #1e293b}
+.title{font-size:2.5rem;font-weight:800;background:linear-gradient(90deg,#10b981,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.5rem}
+.subtitle{color:#94a3b8;font-size:1.1rem}
+.main{flex:1;padding:2rem;max-width:1200px;margin:0 auto;width:100%}
+.chartSection,.metricsSection{margin-bottom:3rem}
+.chartSection h2,.metricsSection h2{font-size:1.5rem;margin-bottom:1rem;color:#e2e8f0}
+.chartContainer{position:relative;background:#1e293b;border-radius:12px;padding:1rem;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.chart{width:100%;height:500px}
+.legend{display:flex;gap:1.5rem;margin-top:.75rem;font-size:.9rem;color:#94a3b8}
+.dotGreen{color:#10b981}.dotOrange{color:#f59e0b}
+.table{width:100%;border-collapse:collapse;background:#1e293b;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.table th,.table td{padding:1rem 1.5rem;text-align:left;border-bottom:1px solid #334155}
+.table th{background:#0f172a;font-weight:600;color:#94a3b8;text-transform:uppercase;font-size:.85rem;letter-spacing:.05em}
+.sessionCol{color:#10b981;font-weight:600}
+.manualCol{color:#f59e0b;font-weight:600}
+.footer{padding:2rem;text-align:center;border-top:1px solid #1e293b;color:#64748b;font-size:.9rem}
+.footer a{color:#38bdf8;font-weight:500}
+.disclaimer{margin-top:.5rem;font-size:.8rem;opacity:.7}
+@media(max-width:768px){.title{font-size:1.8rem}.chart{height:350px}.table th,.table td{padding:.75rem}}
