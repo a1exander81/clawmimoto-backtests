@@ -6,89 +6,132 @@ const createChart = dynamic(() => import('lightweight-charts').then(mod => mod.c
 
 export default function TradingChart({ sessionMeta, manualMeta }) {
   const chartContainerRef = useRef(null)
-useEffect(() => {
+
+  useEffect(() => {
     if (!chartContainerRef.current || !sessionMeta || !manualMeta) return
+
     const initChart = async () => {
       const createChartLib = await createChart
+      
       const buildSeries = (meta) =>
-        fetch(`/api/backtest/${meta.mode}`).then(r => r.text()).then(text => {
-          const trades = text.split('\n').filter(Boolean).map(JSON.parse)
-          const df = []
-          trades.forEach(t => {
-            const date = new Date(t.entry_ts)
-            date.setHours(0, 0, 0, 0)
-            const existing = df.find(d => d.time.getTime() === date.getTime())
-            if (!existing) {
-              df.push({
-                time: date,
-                open: t.entry_price,
-                high: t.entry_price,
-                low: t.entry_price,
-                close: t.exit_price,
-                volume: 1,
-              })
-            } else {
-              existing.high = Math.max(existing.high, t.entry_price, t.exit_price)
-              existing.low = Math.min(existing.low, t.entry_price, t.exit_price)
-              existing.close = t.exit_price
-              existing.volume += 1
-            }
+        fetch(`/api/backtest/${meta.mode}`)
+          .then(r => r.text())
+          .then(text => {
+            const trades = text.split('\n').filter(Boolean).map(JSON.parse)
+            const df = []
+            trades.forEach(t => {
+              const date = new Date(t.entry_ts)
+              date.setHours(0, 0, 0, 0)
+              const existing = df.find(d => d.time.getTime() === date.getTime())
+              if (!existing) {
+                df.push({
+                  time: date,
+                  open: t.entry_price,
+                  high: t.entry_price,
+                  low: t.entry_price,
+                  close: t.exit_price,
+                  volume: 1,
+                })
+              } else {
+                existing.high = Math.max(existing.high, t.entry_price, t.exit_price)
+                existing.low = Math.min(existing.low, t.entry_price, t.exit_price)
+                existing.close = t.exit_price
+                existing.volume += 1
+              }
+            })
+            return df.sort((a, b) => a.time - b.time)
           })
-          return df.sort((a, b) => a.time - b.time)
-        })
-      const [sessionData, manualData] = await Promise.all([buildSeries(sessionMeta), buildSeries(manualMeta)])
+
+      const [sessionData, manualData] = await Promise.all([
+        buildSeries(sessionMeta),
+        buildSeries(manualMeta)
+      ])
+
       const chart = createChartLib(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
         height: 500,
-        layout: { background: { color: '#0f172a' }, textColor: '#e2e8f0' },
-        grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
-        crosshair: { mode: 1 },
-        rightPriceScale: { borderColor: '#334155' },
-        timeScale: { borderColor: '#334155', timeVisible: true },
+        layout: {
+          background: { color: '#05070a' },
+          textColor: '#8b949e',
+        },
+        grid: {
+          vertLines: { color: '#161b22' },
+          horzLines: { color: '#161b22' },
+        },
+        crosshair: {
+          mode: 1,
+          vertLine: {
+            width: 1,
+            color: '#38bdf8',
+            style: 2,
+          },
+          horzLine: {
+            width: 1,
+            color: '#38bdf8',
+            style: 2,
+          },
+        },
+        rightPriceScale: {
+          borderColor: '#30363d',
+          visible: true,
+        },
+        timeScale: {
+          borderColor: '#30363d',
+          timeVisible: true,
+          secondsVisible: false,
+        },
       })
-      const sessionSeries = chart.addCandlestickSeries({
-        title: 'Session (green)',
-        upColor: '#10b981',
-        downColor: '#ef4444',
-        borderDownColor: '#ef4444',
-        borderUpColor: '#10b981',
-        wickDownColor: '#ef4444',
-        wickUpColor: '#10b981',
+
+      const manualSeries = chart.addLineSeries({
+        color: '#f85149',
+        lineWidth: 2,
+        title: 'Manual Mode',
       })
-      sessionSeries.setData(sessionData)
-      const manualSeries = chart.addCandlestickSeries({
-        title: 'Manual (orange)',
-        upColor: '#f59e0b',
-        downColor: '#8b5cf6',
-        borderDownColor: '#8b5cf6',
-        borderUpColor: '#f59e0b',
-        wickDownColor: '#8b5cf6',
-        wickUpColor: '#f59e0b',
+      
+      const sessionSeries = chart.addLineSeries({
+        color: '#3fb950',
+        lineWidth: 3,
+        title: 'Session Mode',
       })
-      manualSeries.setData(manualData)
-      const volumeSeries = chart.addHistogramSeries({
-        color: '#26a69a',
-        priceFormat: { type: 'volume' },
-        priceScaleId: '',
-        scaleMargins: { top: 0.8, bottom: 0 },
-      })
-      const volumeData = sessionData.map(d => ({
-        time: d.time,
-        value: d.volume,
-        color: d.close >= d.open ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)',
-      }))
-      volumeSeries.setData(volumeData)
+
+      // Convert candle data to line data (using close price for equity-like view)
+      const sessionLine = sessionData.map(d => ({ time: d.time.getTime() / 1000, value: d.close }))
+      const manualLine = manualData.map(d => ({ time: d.time.getTime() / 1000, value: d.close }))
+
+      manualSeries.setData(manualLine)
+      sessionSeries.setData(sessionLine)
+
       chart.timeScale().fitContent()
+
+      const handleResize = () => {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth })
+      }
+      window.addEventListener('resize', handleResize)
+
+      return () => {
+        window.removeEventListener('resize', handleResize)
+        chart.remove()
+      }
     }
-    initChart()
-    return () => { if (chartContainerRef.current) chartContainerRef.current.remove() }
+
+    const cleanup = initChart()
+    return () => {
+      cleanup.then(fn => fn && fn())
+    }
   }, [sessionMeta, manualMeta])
+
   return (
-    <div className={styles.chartContainer}>
-      <div ref={chartContainerRef} className={styles.chart} />
-      <div className={styles.legend}>
-        <span><span className={styles.dotGreen}>●</span> Session</span>
-        <span><span className={styles.dotOrange}>●</span> Manual</span>
+    <div className={styles.chartWrapperInner}>
+      <div ref={chartContainerRef} className={styles.chartInstance} />
+      <div className={styles.chartLegend}>
+        <div className={styles.legendItem}>
+          <span className={styles.legendDotSession}></span>
+          <span>Session Engine</span>
+        </div>
+        <div className={styles.legendItem}>
+          <span className={styles.legendDotManual}></span>
+          <span>Manual Baseline</span>
+        </div>
       </div>
     </div>
   )
