@@ -1,24 +1,32 @@
 :root {
-  --bg: #05070a;
-  --surface-lv1: #0d1117;
-  --surface-lv2: #161b22;
-  --surface-lv3: #21262d;
-  --border: #30363d;
-  --border-glow: rgba(56, 189, 248, 0.2);
+  /* BingX + Solana Core Palette */
+  --bg-obsidian: #05070a;
+  --surface-lv1: #0b0e12;
+  --surface-lv2: #14181f;
+  --surface-lv3: #1c222d;
+  --border-muted: #1e232b;
   
-  --text-primary: #f0f6fc;
+  /* Solana Accent Gradients */
+  --solana-purple: #9945ff;
+  --solana-cyan: #14f195;
+  --solana-blue: #03e1ff;
+  --solana-magenta: #dc1fff;
+  
+  --gradient-solana: linear-gradient(135deg, var(--solana-purple) 0%, var(--solana-cyan) 100%);
+  --gradient-solana-glow: linear-gradient(135deg, rgba(153, 69, 255, 0.2) 0%, rgba(20, 241, 149, 0.2) 100%);
+  
+  /* Status Colors (BingX Style but Solana Touched) */
+  --text-primary: #ffffff;
   --text-secondary: #8b949e;
-  --text-muted: #484f58;
+  --text-muted: #5d6771;
   
-  --accent-blue: #38bdf8;
-  --accent-blue-dim: rgba(56, 189, 248, 0.1);
-  --accent-green: #3fb950;
-  --accent-green-dim: rgba(63, 185, 80, 0.1);
-  --accent-red: #f85149;
-  --accent-red-dim: rgba(248, 81, 73, 0.1);
-  --accent-gold: #e3b341;
+  --accent-green: #14f195; /* Solana Cyan for gains */
+  --accent-red: #ff4d4d;
+  --accent-glow-green: rgba(20, 241, 149, 0.15);
+  --accent-glow-purple: rgba(153, 69, 255, 0.15);
   
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --glass-bg: rgba(11, 14, 18, 0.8);
 }
 
 * {
@@ -28,19 +36,36 @@
 }
 
 body {
-  background: var(--bg);
+  background: var(--bg-obsidian);
   color: var(--text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-obsidian);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-lv3);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--solana-purple);
 }
 
 a {
-  color: var(--accent-blue);
+  color: var(--solana-cyan);
   text-decoration: none;
-  transition: opacity 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 a:hover {
-  opacity: 0.8;
+  filter: drop-shadow(0 0 5px var(--solana-cyan));
 }
