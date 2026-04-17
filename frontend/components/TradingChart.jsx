@@ -1,145 +1,141 @@
-'use client'
-
-import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickSeries, HistogramSeries, Time } from 'lightweight-charts'
 import { useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
+import { format } from 'date-fns'
+import styles from '../styles/Home.module.css'
 
-export default function TradingChart() {
-  const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<IChartApi | null>(null)
-  const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
-  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
+// Dynamically import lightweight-charts (SSR unsafe)
+const createChart = dynamic(
+  () => import('lightweight-charts').then(mod => mod.createChart),
+  { ssr: false }
+)
+
+export default function TradingChart({ sessionMeta, manualMeta }) {
+  const chartContainerRef = useRef(null)
+  const chartRef = useRef(null)
 
   useEffect(() => {
-    if (!chartContainerRef.current) return
+    if (!chartContainerRef.current || !sessionMeta || !manualMeta) return
 
-    const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: 500,
-      layout: {
-        background: { type: ColorType.Solid, color: '#0a0a0a' },
-        textColor: '#e0e0e0',
-      },
-      grid: {
-        vertLines: { color: '#222' },
-        horzLines: { color: '#222' },
-      },
-      crosshair: {
-        mode: 1,
-        vertLine: { color: '#00bcd4', width: 1 },
-        horzLine: { color: '#00bcd4', width: 1 },
-      },
-      rightPriceScale: {
-        borderColor: '#333',
-        scaleMargins: { top: 0.2, bottom: 0.2 },
-      },
-      timeScale: {
-        borderColor: '#333',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-    })
+    const initChart = async () => {
+      const createChartLib = await createChart
 
-    candlestickSeriesRef.current = chart.addSeries(CandlestickSeries, {
-      upColor: '#00ff9d',
-      downColor: '#ff6b6b',
-      borderVisible: false,
-      wickUpColor: '#00ff9d',
-      wickDownColor: '#ff6b6b',
-    })
-
-    volumeSeriesRef.current = chart.addSeries(HistogramSeries, {
-      color: '#26a69a',
-      priceFormat: { type: 'volume' },
-      priceScaleId: '',
-      scaleMargins: { top: 0.8, bottom: 0 },
-    })
-
-    chartRef.current = chart
-
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth, height: 500 })
+      // Build OHLC + volume data from trades (daily aggregation)
+      const buildSeries = (meta) => {
+        // Fetch trades for this mode
+        return fetch(`/api/backtest/${meta.mode}`)
+          .then(r => r.text())
+          .then(text => {
+            const trades = text.split('\n').filter(Boolean).map(JSON.parse)
+            const df = []
+            trades.forEach(t => {
+              const date = new Date(t.entry_ts)
+              date.setHours(0,0,0,0)
+              const existing = df.find(d => d.time.getTime() === date.getTime())
+              if (!existing) {
+                df.push({
+                  time: date,
+                  open: t.entry_price,
+                  high: t.entry_price,
+                  low: t.entry_price,
+                  close: t.exit_price,
+                  volume: 1,
+                })
+              } else {
+                existing.high = Math.max(existing.high, t.entry_price, t.exit_price)
+                existing.low = Math.min(existing.low, t.entry_price, t.exit_price)
+                existing.close = t.exit_price
+                existing.volume += 1
+              }
+            })
+            return df.sort((a,b) => a.time - b.time)
+          })
       }
+
+      const [sessionData, manualData] = await Promise.all([
+        buildSeries(sessionMeta),
+        buildSeries(manualMeta)
+      ])
+
+      const chart = createChartLib(chartContainerRef.current, {
+        width: chartContainerRef.current.clientWidth,
+        height: 500,
+        layout: {
+          background: { color: '#0f172a' },
+          textColor: '#e2e8f0',
+        },
+        grid: {
+          vertLines: { color: '#1e293b' },
+          horzLines: { color: '#1e293b' },
+        },
+        crosshair: {
+          mode: 1,
+        },
+        rightPriceScale: {
+          borderColor: '#334155',
+        },
+        timeScale: {
+          borderColor: '#334155',
+          timeVisible: true,
+        },
+      })
+
+      // Candlestick series (Session)
+      const sessionSeries = chart.addCandlestickSeries({
+        title: 'Session (green)',
+        upColor: '#10b981',
+        downColor: '#ef4444',
+        borderDownColor: '#ef4444',
+        borderUpColor: '#10b981',
+        wickDownColor: '#ef4444',
+        wickUpColor: '#10b981',
+      })
+      sessionSeries.setData(sessionData)
+
+      // Candlestick series (Manual) — overlay with transparency
+      const manualSeries = chart.addCandlestickSeries({
+        title: 'Manual (orange)',
+        upColor: '#f59e0b',
+        downColor: '#8b5cf6',
+        borderDownColor: '#8b5cf6',
+        borderUpColor: '#f59e0b',
+        wickDownColor: '#8b5cf6',
+        wickUpColor: '#f59e0b',
+      })
+      manualSeries.setData(manualData)
+
+      // Volume histogram (session)
+      const volumeSeries = chart.addHistogramSeries({
+        color: '#26a69a',
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+        scaleMargins: { top: 0.8, bottom: 0 },
+      })
+      const volumeData = sessionData.map(d => ({
+        time: d.time,
+        value: d.volume,
+        color: d.close >= d.open ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)',
+      }))
+      volumeSeries.setData(volumeData)
+
+      chart.timeScale().fitContent()
     }
-    window.addEventListener('resize', handleResize)
+
+    initChart()
 
     return () => {
-      window.removeEventListener('resize', handleResize)
-      chart.remove()
-    }
-  }, [])
-
-  // Load data from API
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [sessionRes, manualRes] = await Promise.all([
-          fetch('/api/backtest/session?period=2026-03'),
-          fetch('/api/backtest/manual?period=2026-03'),
-        ])
-        const session = await sessionRes.json()
-        const manual = await manualRes.json()
-
-        // Build candlestick data from trades (simulate OHLC from entry/exit)
-        // For demo, we'll aggregate by day
-        const sessionCandles = aggregateToCandles(session.trades)
-        const manualCandles = aggregateToCandles(manual.trades)
-
-        if (candlestickSeriesRef.current && volumeSeriesRef.current) {
-          candlestickSeriesRef.current.setData(sessionCandles)
-          volumeSeriesRef.current.setData(sessionCandles.map(c => ({
-            time: c.time,
-            value: c.volume,
-            color: c.close >= c.open ? 'rgba(0,255,157,0.5)' : 'rgba(255,107,107,0.5)',
-          })))
-        }
-      } catch (e) {
-        console.error("Failed to load chart data", e)
+      if (chartRef.current) {
+        chartRef.current.remove()
       }
     }
-    loadData()
-  }, [])
+  }, [sessionMeta, manualMeta])
 
   return (
-    <div style={{ width: '100%', marginBottom: '2rem' }}>
-      <div ref={chartContainerRef} style={{ width: '100%', height: 500 }} />
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1rem', color: '#888', fontSize: '0.9rem' }}>
-        <span style={{ color: '#00ff9d' }}>● Session Mode</span>
-        <span style={{ color: '#ff6b6b' }}>● Manual Mode</span>
+    <div className={styles.chartContainer}>
+      <div ref={chartContainerRef} className={styles.chart} />
+      <div className={styles.legend}>
+        <span><span className={styles.dotGreen}>●</span> Session</span>
+        <span><span className={styles.dotOrange}>●</span> Manual</span>
       </div>
     </div>
   )
-}
-
-function aggregateToCandles(trades) {
-  // Group trades by date and simulate OHLC from entry/exit prices
-  const daily = {}
-  for (const t of trades) {
-    const date = t.timestamp.split('T')[0]
-    if (!daily[date]) {
-      daily[date] = { opens: [], highs: [], lows: [], closes: [], volume: 0 }
-    }
-    daily[date].opens.push(t.entry_price)
-    daily[date].highs.push(max(t.entry_price, t.exit_price, t.tp, t.sl))
-    daily[date].lows.push(min(t.entry_price, t.exit_price, t.tp, t.sl))
-    daily[date].closes.push(t.exit_price)
-    daily[date].volume += 1  # count trades as volume proxy
-  }
-
-  return Object.entries(daily).map(([date, d]) => ({
-    time: date as Time,
-    open: d.opens[0],
-    high: Math.max(...d.highs),
-    low: Math.min(...d.lows),
-    close: d.closes[d.closes.length - 1],
-    volume: d.volume,
-  })).sort((a, b) => a.time.localeCompare(b.time))
-}
-
-function max(...nums) {
-  return Math.max(...nums.filter(n => n > 0))
-}
-function min(...nums) {
-  const filtered = nums.filter(n => n > 0)
-  return filtered.length ? Math.min(...filtered) : 0
 }

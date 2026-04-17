@@ -1,70 +1,63 @@
 #!/usr/bin/env python3
 """
-Commit backtest results to GitHub and return commit SHA.
+Commit backtest results to GitHub repository.
+Creates a commit with date-based message and pushes to origin/master.
 """
 
-import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime
+import os
 
-BACKTEST_ROOT = Path(__file__).parent.parent
-GIT_REPO = BACKTEST_ROOT
+
+BASE = Path(__file__).parent.parent
+BACKTESTS_DIR = BASE / "backtests"
 GIT_REMOTE = "origin"
 
-def commit_and_push(period: str = "2026-03"):
-    """Commit backtest data for a given period and push to GitHub."""
-    backtest_dir = BACKTEST_ROOT / "backtests" / period
-    if not backtest_dir.exists():
-        print(f"❌ No backtest data at {backtest_dir}")
-        return None
 
-    os.chdir(GIT_REPO)
+def run_cmd(cmd: list, cwd=None, check=True):
+    """Run shell command."""
+    result = subprocess.run(cmd, cwd=cwd or BASE, capture_output=True, text=True)
+    if check and result.returncode != 0:
+        print(f"ERROR: {' '.join(cmd)}")
+        print(result.stderr)
+        sys.exit(1)
+    return result
 
-    # Configure git user (if not set)
-    subprocess.run(["git", "config", "user.email", "bot@clawmimoto.com"], check=False)
-    subprocess.run(["git", "config", "user.name", "Clawmimoto Bot"], check=False)
 
-    # Add files
-    subprocess.run(["git", "add", f"backtests/{period}/"], check=True)
+def commit_and_push(period: str):
+    """Commit all changes in backtests/<period>/ and push."""
+    print(f"Committing backtest results for period: {period}")
 
-    # Commit
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    commit_msg = f"feat: add {period} backtest results (Session vs Manual)\n\nPeriod: {period}\nGenerated: {ts}\n"
-    result = subprocess.run(["git", "commit", "-m", commit_msg], capture_output=True, text=True)
-    if result.returncode == 0:
-        print("✅ Committed locally")
-    else:
-        # Maybe nothing to commit?
-        if "nothing to commit" in result.stdout or "nothing to commit" in result.stderr:
-            print("⚠️  Nothing to commit (already up-to-date)")
-            # Get latest commit SHA anyway
-            sha = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
-            return sha
-        else:
-            print(f"❌ Commit failed: {result.stderr}")
-            return None
+    # 1. Check period exists
+    period_dir = BACKTESTS_DIR / period
+    if not period_dir.exists():
+        print(f"ERROR: {period_dir} not found")
+        sys.exit(1)
 
-    # Push
-    result = subprocess.run(["git", "push", GIT_REMOTE, "HEAD"], capture_output=True, text=True)
-    if result.returncode == 0:
-        print("✅ Pushed to GitHub")
-    else:
-        print(f"❌ Push failed: {result.stderr}")
-        return None
+    # 2. Git add
+    run_cmd(["git", "add", str(period_dir)])
 
-    # Get SHA
-    sha = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
-    print(f"📋 Commit SHA: {sha}")
+    # 3. Commit
+    date = datetime.now().strftime("%Y-%m-%d %H:%M")
+    commit_msg = f"chore: backtest results for {period} ({date})"
+    run_cmd(["git", "commit", "-m", commit_msg])
+
+    # 4. Push
+    print("Pushing to GitHub...")
+    run_cmd(["git", "push", GIT_REMOTE, "master"])
+    print("✅ Pushed successfully")
+
+    # 5. Get commit SHA
+    sha = run_cmd(["git", "rev-parse", "--short", "HEAD"]).stdout.strip()
+    print(f"Commit SHA: {sha}")
     return sha
 
+
 if __name__ == "__main__":
-    period = sys.argv[1] if len(sys.argv) > 1 else "2026-03"
-    sha = commit_and_push(period)
-    if sha:
-        print(f"\n✅ Success: {sha}")
-        sys.exit(0)
-    else:
-        print("\n❌ Failed")
+    if len(sys.argv) < 2:
+        print("Usage: python3 commit_to_github.py <period>  (e.g. 2026-03)")
         sys.exit(1)
+    period = sys.argv[1]
+    commit_and_push(period)

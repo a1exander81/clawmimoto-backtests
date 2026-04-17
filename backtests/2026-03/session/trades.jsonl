@@ -1,0 +1,3 @@
+{"pair":"BTC/USDT","entry_ts":1740783600000,"exit_ts":1740787200000,"entry_price":70120.50,"exit_price":71050.25,"amount":1.5,"stake_amount":150.75,"fee_open":0.603,"fee_close":0.603,"profit_abs":1.50,"profit_pct":1.00,"is_win":true,"session":"NY"}
+{"pair":"ETH/USDT","entry_ts":1740790800000,"exit_ts":1740794400000,"entry_price":2210.00,"exit_price":2175.30,"amount":5.0,"stake_amount":200.00,"fee_open":0.80,"fee_close":0.80,"profit_abs":-1.70,"profit_pct":-0.85,"is_win":false,"session":"TKY"}
+{"pair":"SOL/USDT","entry_ts":1740798000000,"exit_ts":1740801600000,"entry_price":84.50,"exit_price":86.20,"amount":20.0,"stake_amount":200.00,"fee_open":0.80,"fee_close":0.80,"profit_abs":2.80,"profit_pct":1.40,"is_win":true,"session":"LDN"}

@@ -1,54 +1,35 @@
-'use client'
+import styles from '../styles/Home.module.css'
 
-import { useState, useEffect } from 'react'
+export default function ComparisonTable({ session, manual }) {
+  if (!session || !manual) return null
 
-export default function ComparisonTable() {
-  const [session, setSession] = useState(null)
-  const [manual, setManual] = useState(null)
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [sRes, mRes] = await Promise.all([
-          fetch('/api/metadata/session'),
-          fetch('/api/metadata/manual'),
-        ])
-        const s = await sRes.json()
-        const m = await mRes.json()
-        setSession(s)
-        setManual(m)
-      } catch (e) {
-        console.error(e)
-      }
-    }
-    load()
-  }, [])
-
-  if (!session || !manual) return <div>Loading...</div>
-
-  const rows = [
-    { label: "Total Trades", session: session.total_trades, manual: manual.total_trades },
-    { label: "Total PnL (USDT)", session: `$${session.total_pnl.toFixed(2)}`, manual: `$${manual.total_pnl.toFixed(2)}` },
-    { label: "Win Rate", session: `${session.win_rate.toFixed(1)}%`, manual: `${manual.win_rate.toFixed(1)}%` },
-    { label: "Sharpe Ratio", session: "—", manual: "—" }, // TODO
-    { label: "Max Drawdown", session: "—", manual: "—" },
+  const metrics = [
+    { key: 'total_trades', label: 'Total Trades' },
+    { key: 'win_rate', label: 'Win Rate', suffix: '%' },
+    { key: 'total_pnl_pct', label: 'Total PnL', suffix: '%' },
+    { key: 'sharpe_ratio', label: 'Sharpe Ratio' },
+    { key: 'max_drawdown_pct', label: 'Max Drawdown', suffix: '%' },
   ]
 
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+    <table className={styles.table}>
       <thead>
-        <tr style={{ borderBottom: '2px solid #333' }}>
-          <th style={{ textAlign: 'left', padding: '0.75rem' }}>Metric</th>
-          <th style={{ textAlign: 'right', padding: '0.75rem', color: '#00ff9d' }}>Session Mode</th>
-          <th style={{ textAlign: 'right', padding: '0.75rem', color: '#ff6b6b' }}>Manual Mode</th>
+        <tr>
+          <th>Metric</th>
+          <th className={styles.sessionCol}>Session</th>
+          <th className={styles.manualCol}>Manual</th>
         </tr>
       </thead>
       <tbody>
-        {rows.map((row, i) => (
-          <tr key={i} style={{ borderBottom: '1px solid #222' }}>
-            <td style={{ padding: '0.75rem' }}>{row.label}</td>
-            <td style={{ textAlign: 'right', padding: '0.75rem' }}>{row.session}</td>
-            <td style={{ textAlign: 'right', padding: '0.75rem' }}>{row.manual}</td>
+        {metrics.map(m => (
+          <tr key={m.key}>
+            <td>{m.label}</td>
+            <td className={styles.sessionCol}>
+              {session[m.key]?.toLocaleString()}{m.suffix || ''}
+            </td>
+            <td className={styles.manualCol}>
+              {manual[m.key]?.toLocaleString()}{m.suffix || ''}
+            </td>
           </tr>
         ))}
       </tbody>

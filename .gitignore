@@ -1,7 +1,45 @@
+# Python
 __pycache__/
-*.pyc
-*.jsonl
-*.csv
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+
+# Env files
 .env
-*.log
+*.env
+
+# Data (large files, not tracked)
+backtests/**/*.csv
+backtests/**/*.parquet
+
+# OS
 .DS_Store
+Thumbs.db
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test outputs
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Freqtrade
+freqtrade/
+user_data/
+download/

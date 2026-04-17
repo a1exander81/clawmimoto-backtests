@@ -1,38 +1,24 @@
-import { NextResponse } from 'next/server'
+export default async function handler(req, res) {
+  const { mode } = req.query
+  const validModes = ['session', 'manual']
+  if (!validModes.includes(mode)) {
+    return res.status(400).json({ error: 'Invalid mode' })
+  }
 
-const GITHUB_RAW = "https://raw.githubusercontent.com/a1exander81/clawmimoto-backtests/main"
-
-export async function GET(req, { params }) {
-  const { mode } = params  // "session" or "manual"
-  const period = req.nextUrl.searchParams.get('period') || '2026-03'
-  const url = `${GITHUB_RAW}/backtests/${period}/${mode}/trades.jsonl`
+  const period = '2026-03'
+  const githubRaw = process.env.NEXT_PUBLIC_GITHUB_RAW || 'https://raw.githubusercontent.com/a1exander81/clawmimoto-backtests/main'
+  const url = `${githubRaw}/backtests/${period}/${mode}/trades.jsonl`
 
   try {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error('Not found')
-    const text = await res.text()
-    const lines = text.trim().split('\n').filter(Boolean)
-    const trades = lines.map(line => JSON.parse(line))
-
-    // Build equity curve
-    let balance = 10000
-    const curve = []
-    for (const t of trades) {
-      balance += t.pnl_abs
-      curve.push({
-        date: t.timestamp.split('T')[0],
-        equity: balance,
-        pnl: t.pnl_abs,
-      })
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
     }
-
-    return NextResponse.json({ trades, curve })
-  } catch (e) {
-    // Return empty/demo data until backtests are run
-    return NextResponse.json({
-      trades: [],
-      curve: [],
-      message: 'No data yet — backtests pending',
-    })
+    const text = await response.text()
+    res.setHeader('Content-Type', 'application/jsonl')
+    res.status(200).send(text)
+  } catch (error) {
+    console.error('Failed to fetch trades:', error)
+    res.status(500).json({ error: 'Failed to load trades' })
   }
 }

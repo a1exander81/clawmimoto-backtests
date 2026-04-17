@@ -1,148 +1,89 @@
 #!/usr/bin/env python3
 """
-Anchor backtest metadata on Solana using the Memo program.
-Stores: strategy, period, commit_sha, trade_count, pnl, win_rate, data_cid (optional)
-Cost: ~0.01 SOL per record
+Anchor backtest commit hash on Solana blockchain via memo program.
+Uses solana CLI to send a small transaction with a memo.
+Cost: ~0.01 SOL
 """
 
-import os
+import subprocess
 import sys
 import json
-import hashlib
-import subprocess
 from pathlib import Path
-from datetime import datetime, timezone
 
-# ── Load config ──
-ENV_PATH = Path(__file__).parent.parent.parent / "clawmimoto-bot" / ".env"
-if ENV_PATH.exists():
-    from dotenv import load_dotenv
-    load_dotenv(ENV_PATH, override=True)
 
-SOLANA_WALLET = os.getenv("SOLANA_WALLET")  # path to wallet keypair JSON
-SOLANA_RPC = os.getenv("SOLANA_RPC", "https://api.mainnet-beta.solana.com")
+BASE = Path(__file__).parent.parent
 
-if not SOLANA_WALLET:
-    print("❌ SOLANA_WALLET not set in .env")
-    sys.exit(1)
 
-def compute_metadata_hash(metadata: dict, commit_sha: str) -> str:
-    """Compute SHA256 of (metadata + commit_sha) for on-chain proof."""
-    combined = json.dumps(metadata, sort_keys=True) + commit_sha
-    return hashlib.sha256(combined.encode()).hexdigest()
+def run_cmd(cmd: list, capture=True):
+    """Run shell command."""
+    result = subprocess.run(cmd, capture_output=capture, text=True)
+    if result.returncode != 0:
+        print(f"ERROR: {' '.join(cmd)}")
+        print(result.stderr)
+        sys.exit(1)
+    return result
 
-def anchor_on_solana(metadata: dict, commit_sha: str, memo_text: str = None):
-    """Write a memo transaction to Solana anchoring the backtest."""
-    # Build memo string if not provided
-    if memo_text is None:
-        memo_text = (
-            f"Clawmimoto Backtest | "
-            f"Strategy: {metadata['strategy']} | "
-            f"Period: {metadata['period_start']} → {metadata['period_end']} | "
-            f"Trades: {metadata['total_trades']} | "
-            f"PnL: ${metadata['total_pnl']:,.2f} | "
-            f"WinRate: {metadata['win_rate']:.1f}% | "
-            f"Commit: {commit_sha[:8]}..."
-        )
 
-    # Use solana CLI to send memo (requires solana-cli installed)
-    # Alternative: use Python solana library
-    try:
-        from solana.rpc.api import Client
-        from solana.keypair import Keypair
-        from solana.transaction import Transaction
-        from solana.system_program import TransferParams, transfer
-        from solana.publickey import PublicKey
-        from solana.message import Message
+def anchor_commit(period: str, commit_sha: str, keypair_path: str = None):
+    """
+    Anchor commit hash on Solana using memo program.
 
-        # Load wallet
-        with open(SOLANA_WALLET) as f:
-            secret = json.load(f)
-        kp = Keypair.from_secret_key(bytes(secret))
+    Args:
+        period: e.g. "2026-03"
+        commit_sha: full or short commit hash
+        keypair_path: path to keypair.json (default: ~/.config/solana/id.json)
+    """
+    if keypair_path is None:
+        keypair_path = str(Path.home() / ".config" / "solana" / "id.json")
 
-        # Build memo instruction (using System Program's memo? Actually need Memo program)
-        # Simpler: use solana-cli via subprocess
-        cmd = [
-            "solana", "transfer",
-            "--from", SOLANA_WALLET,
-            "--to", "Memo1Zk9bZ7kR3d8qQ5w2x4y6v9n1m3p5r8t2y4u6i9o1",  # Memo program ID
-            "--lamports", "5000",  # ~0.000005 SOL (minimum rent-exempt)
-            "--fee-payer", SOLANA_WALLET,
-            "--url", SOLANA_RPC,
-            "--allow-unfunded-recipient",
-            "--", memo_text
-        ]
-        # Actually, the Memo program doesn't accept lamports; better to use a transfer to a known address with memo
-        # Let's use a simpler approach: transfer 0.01 SOL to ourselves with memo
-        cmd = [
-            "solana", "transfer",
-            SOLANA_WALLET,  # send to self
-            "0.01",  # SOL amount
-            "--from", SOLANA_WALLET,
-            "--fee-payer", SOLANA_WALLET,
-            "--url", SOLANA_RPC,
-            "--allow-unfunded-recipient",
-            "--", memo_text
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode == 0:
-            sig = result.stdout.strip().split()[-1]
-            print(f"✅ Anchored on Solana: {sig}")
-            return sig
-        else:
-            print(f"❌ Solana transfer failed: {result.stderr}")
-            return None
-    except ImportError:
-        print("⚠️  solana-py not installed, trying solana-cli...")
-        # Fallback to CLI only
-        pass
-
-    return None
-
-def main():
-    if len(sys.argv) < 3:
-        print("Usage: anchor_on_solana.py <period> <commit_sha> [metadata_json]")
+    # Check keypair exists
+    if not Path(keypair_path).exists():
+        print(f"ERROR: Solana keypair not found at {keypair_path}")
+        print("Run: solana-keygen new --outfile ~/.config/solana/id.json")
         sys.exit(1)
 
-    period = sys.argv[1]
-    commit_sha = sys.argv[2]
-    meta_path = Path(sys.argv[3]) if len(sys.argv) > 3 else None
+    # Check balance
+    print("Checking SOL balance...")
+    balance = run_cmd(["solana", "balance", "--keypair", keypair_path]).stdout.strip()
+    print(f"Current balance: {balance}")
+    if "0.0" in balance or float(balance.split()[0]) < 0.02:
+        print("WARNING: Low balance. Need ~0.02 SOL for tx fee.")
+        resp = input("Continue anyway? (y/n): ")
+        if resp.lower() != "y":
+            sys.exit(0)
 
-    # Load metadata
-    if meta_path and meta_path.exists():
-        with open(meta_path) as f:
-            metadata = json.load(f)
-    else:
-        # Build minimal metadata from commit
-        metadata = {
-            "strategy": "unknown",
-            "period_start": period,
-            "period_end": period,
-            "total_trades": 0,
-            "total_pnl": 0,
-            "win_rate": 0,
-        }
+    # Build memo message
+    memo = f"ClawmimotoBacktest:{period}:{commit_sha}"
 
-    # Compute hash
-    data_hash = compute_metadata_hash(metadata, commit_sha)
-    print(f"🔗 Metadata hash: {data_hash}")
+    print(f"Anchoring: {memo}")
+    print("Signing and sending transaction...")
 
-    # Anchor to Solana
-    sig = anchor_on_solana(metadata, commit_sha)
-    if sig:
-        print(f"✅ Anchored! TX: {sig}")
-        # Save TX to metadata
-        metadata["solana_tx"] = sig
-        metadata["commit_sha"] = commit_sha
-        metadata["data_hash"] = data_hash
-        metadata["anchored_at"] = datetime.now(timezone.utc).isoformat()
-        if meta_path:
-            with open(meta_path, "w") as f:
-                json.dump(metadata, f, indent=2)
-        return 0
-    else:
-        print("❌ Failed to anchor")
-        return 1
+    # Send 0.01 SOL to self with memo
+    # We send to the same wallet (self-transfer) just to anchor memo
+    cmd = [
+        "solana", "transfer",
+        "--keypair", keypair_path,
+        "--recipient", json.loads(open(keypair_path).read())["publicKey"],  # self
+        "--amount", "0.01",
+        "--allow-unfunded-recipient",
+        "--fee-payer", keypair_path,
+        "--memo", memo,
+        "--url", "https://api.mainnet-beta.solana.com",  # or devnet for testing
+    ]
+
+    result = run_cmd(cmd)
+    tx_sig = result.stdout.strip().split()[-1]
+    print(f"✅ Anchored! Tx signature: {tx_sig}")
+    print(f"Explorer: https://explorer.solana.com/tx/{tx_sig}?cluster=mainnet-beta")
+    return tx_sig
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    if len(sys.argv) < 3:
+        print("Usage: python3 anchor_on_solana.py <period> <commit_sha> [keypair_path]")
+        print("Example: python3 anchor_on_solana.py 2026-03 abc123 ~/.config/solana/id.json")
+        sys.exit(1)
+    period = sys.argv[1]
+    commit_sha = sys.argv[2]
+    keypair = sys.argv[3] if len(sys.argv) > 3 else None
+    anchor_commit(period, commit_sha, keypair)

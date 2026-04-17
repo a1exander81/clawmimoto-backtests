@@ -1,139 +1,164 @@
 #!/usr/bin/env python3
 """
-Run 1-month backtest for both Session and Manual modes.
-Outputs: JSONL trade logs + metadata JSON
+Run Freqtrade backtest for both Session and Manual strategies.
+Outputs trades.jsonl + metadata.json + equity_curve.csv per mode.
 """
 
-import os
-import sys
-import json
 import subprocess
+import json
 import pandas as pd
-from datetime import datetime, timezone
 from pathlib import Path
+from datetime import datetime, timezone
+import sys
 
-# ── Config ──
-BACKTEST_ROOT = Path(__file__).parent.parent / "backtests"
-PERIOD_START = "2026-03-01"
-PERIOD_END = "2026-03-31"
-TIMEFRAME = "5m"
-PAIRS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"]
-FREQTRADE_PATH = Path(__file__).parent.parent / "clawmimoto-bot"  # path to freqtrade config
-DRY_RUN_WALLET = 10000
 
-def run_freqtrade_backtest(strategy_name: str, output_dir: Path):
-    """Run freqtrade backtest and export to JSONL."""
-    print(f"🔬 Running backtest: {strategy_name}")
+CONFIG_TEMPLATE = {
+    "max_open_trades": 3,
+    "stake_currency": "USDT",
+    "stake_amount": "10000",
+    "dry_run": True,
+    "dry_run_wallet": 10000,
+    "fiat_display_currency": "USD",
+    "timeframe": "5m",
+    "exchange": {
+        "name": "bingx",
+        "key": "${BINGX_API_KEY}",
+        "secret": "${BINGX_API_SECRET}",
+        "ccxt_config": {},
+        "ccxt_async_config": {},
+        "pair_whitelist": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"],
+    },
+    "pairlists": [{"method": "StaticPairList"}],
+    "candle_type_def": {"candle_type_def": "futures"},
+    "margin_mode": "isolated",
+    "leverage": 50.0,
+}
 
-    # Build command
+
+def run_freqtrade_backtest(strategy_name: str, timerange: str, out_dir: Path):
+    """Run freqtrade backtest and convert output to JSONL."""
+    # 1. Write temporary config
+    config = CONFIG_TEMPLATE.copy()
+    config["strategy"] = strategy_name
+    config_file = out_dir / f"config_{strategy_name}.json"
+    with open(config_file, "w") as f:
+        json.dump(config, f, indent=2)
+
+    # 2. Run freqtrade backtest
+    result_file = out_dir / "backtest_result.json"
     cmd = [
-        "python3", "-m", "freqtrade", "backtesting",
+        "freqtrade",
+        "backtesting",
         "--strategy", strategy_name,
-        "--timerange", f"{PERIOD_START.replace('-','')}-{PERIOD_END.replace('-','')}",
-        "--timeframe", TIMEFRAME,
-        "--dry-run-wallet", str(DRY_RUN_WALLET),
-        "--export", "trades",
-        "--exportfilename", str(output_dir / "trades.csv"),
+        "--timerange", timerange,
+        "--config", str(config_file),
+        "--export", "json",
+        "--export-filename", str(result_file),
     ]
-    # Add config overrides
-    config_path = FREQTRADE_PATH / "configs" / "config.json"
-    user_config = FREQTRADE_PATH / "configs" / "config.local.json"
-    if config_path.exists():
-        cmd.extend(["--config", str(config_path)])
-    if user_config.exists():
-        cmd.extend(["--config", str(user_config)])
 
-    print(f"   CMD: {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=FREQTRADE_PATH, capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"❌ Backtest failed: {result.stderr[-500:]}")
-        return None
+    print(f"Running: {' '.join(cmd)}")
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        print(f"ERROR: {proc.stderr}")
+        sys.exit(1)
 
-    print(f"✅ Backtest complete. Parsing CSV...")
-    csv_path = output_dir / "trades.csv"
-    if not csv_path.exists():
-        print(f"❌ No trades.csv at {csv_path}")
-        return None
+    # 3. Parse backtest result (Freqtrade exports a list of trades)
+    with open(result_file) as f:
+        data = json.load(f)
 
-    # Parse CSV
-    df = pd.read_csv(csv_path)
-    trades = []
-    for _, row in df.iterrows():
-        trade = {
-            "id": int(row["trade_id"]) if "trade_id" in row else 0,
-            "timestamp": row.get("open_date", ""),
-            "mode": "session" if strategy_name == "Claw5MSniper" else "manual",
-            "side": "long" if row.get("is_short", 0) == 0 else "short",
-            "order_type": row.get("order_type", "market").lower(),
-            "pair": row.get("pair", ""),
-            "entry_price": float(row.get("open_rate", 0)),
-            "tp": float(row.get("max_rate", 0)) if "max_rate" in row else 0,
-            "sl": float(row.get("min_rate", 0)) if "min_rate" in row else 0,
-            "exit_price": float(row.get("close_rate", 0)),
-            "pnl_pct": float(row.get("profit_ratio", 0)) * 100,
-            "pnl_abs": float(row.get("profit_abs", 0)),
-            "duration_min": int(row.get("duration", 0)) if "duration" in row else 0,
+    trades = data.get("trades", [])
+    if not trades:
+        print("WARNING: No trades generated")
+        return [], {}
+
+    # 4. Convert to our JSONL format
+    jsonl_lines = []
+    for t in trades:
+        entry = {
+            "pair": t["pair"],
+            "entry_ts": t["entry_ts"],
+            "exit_ts": t.get("exit_ts"),
+            "entry_price": t["entry_price"],
+            "exit_price": t.get("exit_price"),
+            "amount": t["amount"],
+            "stake_amount": t["stake_amount"],
+            "fee_open": t.get("fee_open", 0),
+            "fee_close": t.get("fee_close", 0),
+            "profit_abs": t.get("profit_abs", 0),
+            "profit_pct": t.get("profit_pct", 0),
+            "is_win": t.get("is_win", False),
+            "session": t.get("session_tag", "N/A"),
         }
-        trades.append(trade)
+        jsonl_lines.append(entry)
 
-    # Write JSONL
-    jsonl_path = output_dir / "trades.jsonl"
-    with open(jsonl_path, "w") as f:
-        for t in trades:
-            f.write(json.dumps(t) + "\n")
+    # 5. Build metadata
+    wins = [t for t in trades if t.get("is_win")]
+    losses = [t for t in trades if not t.get("is_win")]
+    total_pnl = sum(t.get("profit_abs", 0) for t in trades)
+    win_rate = len(wins) / len(trades) if trades else 0
 
-    print(f"   📄 {len(trades)} trades → {jsonl_path.name}")
+    # Build equity curve (daily)
+    df = pd.DataFrame(trades)
+    if not df.empty:
+        df["entry_dt"] = pd.to_datetime(df["entry_ts"], unit="ms")
+        df.set_index("entry_dt", inplace=True)
+        equity = (1 + df["profit_pct"] / 100).cumprod()
+        equity_daily = equity.resample("1D").last().ffill()
+        equity_daily.to_csv(out_dir / "equity_curve.csv", header=["equity"])
+    else:
+        equity_daily = pd.Series(dtype=float)
 
-    # Build metadata
-    total_pnl = sum(t["pnl_abs"] for t in trades)
-    wins = [t for t in trades if t["pnl_abs"] > 0]
-    win_rate = len(wins) / len(trades) * 100 if trades else 0
+    # Max drawdown
+    if not equity_daily.empty:
+        rollmax = equity_daily.cummax()
+        dd = (equity_daily - rollmax) / rollmax
+        max_dd = dd.min() * 100
+    else:
+        max_dd = 0.0
+
     metadata = {
         "strategy": strategy_name,
-        "period_start": PERIOD_START,
-        "period_end": PERIOD_END,
-        "timeframe": TIMEFRAME,
-        "pairs": PAIRS,
+        "timerange": timerange,
+        "pair_count": len(set(t["pair"] for t in trades)),
         "total_trades": len(trades),
-        "total_pnl": round(total_pnl, 2),
-        "win_rate": round(win_rate, 2),
-        "initial_balance": DRY_RUN_WALLET,
-        "final_balance": DRY_RUN_WALLET + total_pnl,
+        "win_rate": round(win_rate * 100, 2),
+        "total_pnl_pct": round(total_pnl, 2),
+        "max_drawdown_pct": round(max_dd, 2),
+        "sharpe_ratio": round((total_pnl / len(trades)) / (df["profit_pct"].std() if len(trades) > 1 else 1), 2),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    meta_path = output_dir / "metadata.json"
-    with open(meta_path, "w") as f:
-        json.dump(metadata, f, indent=2)
-    print(f"   📋 Metadata saved")
+    # Write outputs
+    with open(out_dir / "trades.jsonl", "w") as f:
+        for entry in jsonl_lines:
+            f.write(json.dumps(entry) + "\n")
 
-    return metadata
+    with open(out_dir / "metadata.json", "w") as f:
+        json.dump(metadata, f, indent=2)
+
+    print(f"✓ {strategy_name}: {len(trades)} trades, PnL {metadata['total_pnl_pct']}%")
+    return jsonl_lines, metadata
+
 
 def main():
-    base = BACKTEST_ROOT / PERIOD_START
-    base.mkdir(parents=True, exist_ok=True)
+    period = "2026-03"
+    timerange = f"{period}0100-{period}3123"  # full month 5m data
 
-    modes = [
-        ("Claw5MSniper", base / "session"),
-        ("Claw5MSniperManual", base / "manual"),
-    ]
+    base = Path(__file__).parent.parent
+    session_dir = base / "backtests" / period / "session"
+    manual_dir = base / "backtests" / period / "manual"
 
-    results = {}
-    for strategy_name, out_dir in modes:
-        out_dir.mkdir(parents=True, exist_ok=True)
-        meta = run_freqtrade_backtest(strategy_name, out_dir)
-        if meta:
-            results[strategy_name] = meta
+    session_dir.mkdir(parents=True, exist_ok=True)
+    manual_dir.mkdir(parents=True, exist_ok=True)
 
-    # Comparison summary
-    print("\n📊 Backtest Summary")
-    print("-" * 60)
-    for strat, meta in results.items():
-        mode = "Session" if "Sniper" == strat else "Manual"
-        print(f"{mode:8s} | Trades: {meta['total_trades']:4d} | PnL: ${meta['total_pnl']:>10,.2f} | Win: {meta['win_rate']:>5.1f}%")
+    print("=== Running Session backtest ===")
+    run_freqtrade_backtest("Claw5MSniper", timerange, session_dir)
 
-    print("\n✅ All backtests complete. Ready to commit & anchor.")
-    return 0
+    print("=== Running Manual backtest ===")
+    run_freqtrade_backtest("Claw5MSniperManual", timerange, manual_dir)
+
+    print("\n✅ Done. Results in backtests/2026-03/")
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

@@ -1,136 +1,154 @@
 #!/usr/bin/env python3
 """
-Generate mock backtest data (Freqtrade-compatible) for demo purposes.
-Creates realistic-looking trades for Session and Manual modes.
-Output: JSONL + metadata
+Generate realistic mock backtest data for demo purposes.
+Creates trades.jsonl + metadata.json + equity_curve.csv
+for both Session and Manual modes.
 """
 
 import json
 import random
-from datetime import datetime, timezone, timedelta
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-BASE = Path(__file__).parent.parent / "backtests" / "2026-03"
+
+BASE = Path(__file__).parent.parent
+PERIOD = "2026-03"
 PAIRS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"]
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
 
-def random_timestamp(start, end):
-    """Random datetime between start and end."""
-    delta = end - start
-    int_delta = delta.total_seconds()
-    random_second = random.uniform(0, int_delta)
-    return (start + timedelta(seconds=random_second)).replace(tzinfo=timezone.utc)
 
-def generate_trades(mode: str, num_trades: int = 120):
-    """Generate mock trades for one mode."""
+def generate_trades(mode: str, count: int) -> list:
+    """Generate mock trade list."""
     trades = []
-    start_date = datetime(2026, 3, 1, 0, 0, 0, tzinfo=timezone.utc)
-    end_date = datetime(2026, 3, 31, 23, 59, 59, tzinfo=timezone.utc)
+    base_time = datetime(2026, 3, 1, tzinfo=timezone.utc)
 
-    for i in range(num_trades):
-        # Randomize trade parameters
+    for i in range(count):
+        # Random pair
         pair = random.choice(PAIRS)
-        side = random.choice(["long", "short"])
-        order_type = random.choice(["market", "limit"])
-        entry = random.uniform(100, 100000) if "BTC" in pair else random.uniform(10, 10000)
-        # RRR ~1.5-2.5
-        if side == "long":
-            tp = entry * (1 + random.uniform(0.015, 0.035))
-            sl = entry * (1 - random.uniform(0.008, 0.018))
-        else:
-            tp = entry * (1 - random.uniform(0.015, 0.035))
-            sl = entry * (1 + random.uniform(0.008, 0.018))
-        # 60% win rate
-        win = random.random() < 0.6
-        exit_price = tp if win else sl
-        pnl_pct = (exit_price - entry) / entry * 100 if side == "long" else (entry - exit_price) / entry * 100
-        if not win:
-            pnl_pct = -abs(pnl_pct)
-        pnl_abs = pnl_pct / 100 * 100  # $100 stake per trade (for mock)
-        duration = random.randint(5, 120)  # 5-120 minutes
 
-        ts = random_timestamp(start_date, end_date)
+        # Entry time (5m aligned)
+        entry_offset = i * timedelta(minutes=15)  # ~15 min between trades
+        entry_ts = int((base_time + entry_offset).timestamp() * 1000)
+
+        # Hold time: 5M to 2H
+        hold_minutes = random.randint(5, 120)
+        exit_ts = entry_ts + hold_minutes * 60 * 1000
+
+        # Prices (simulate 5m scalping)
+        base_price = {"BTC/USDT": 70000, "ETH/USDT": 2200, "SOL/USDT": 85, "BNB/USDT": 620}[pair]
+        entry_price = base_price * (1 + random.uniform(-0.01, 0.01))
+
+        # Outcome
+        is_win = random.random() < 0.58 if mode == "session" else random.random() < 0.53
+        if is_win:
+            pct = random.uniform(0.5, 2.5)   # +0.5% to +2.5%
+        else:
+            pct = random.uniform(-2.0, -0.5) # -0.5% to -2.0%
+        exit_price = entry_price * (1 + pct / 100)
+
+        amount = random.uniform(0.5, 2.0)   # contract size
+        stake = 10000 * random.uniform(0.01, 0.02)  # 1–2% margin
+        profit_abs = stake * (pct / 100)
+        fee_open = stake * 0.0004  # 0.04% taker
+        fee_close = stake * 0.0004
+        net_profit = profit_abs - fee_open - fee_close
 
         trade = {
-            "id": i + 1,
-            "timestamp": ts.isoformat(),
-            "mode": mode,
-            "side": side,
-            "order_type": order_type,
             "pair": pair,
-            "entry_price": round(entry, 2),
-            "tp": round(tp, 2),
-            "sl": round(sl, 2),
+            "entry_ts": entry_ts,
+            "exit_ts": exit_ts,
+            "entry_price": round(entry_price, 2),
             "exit_price": round(exit_price, 2),
-            "pnl_pct": round(pnl_pct, 2),
-            "pnl_abs": round(pnl_abs, 2),
-            "duration_min": duration,
+            "amount": round(amount, 6),
+            "stake_amount": round(stake, 2),
+            "fee_open": round(fee_open, 4),
+            "fee_close": round(fee_close, 4),
+            "profit_abs": round(net_profit, 2),
+            "profit_pct": round(pct, 2),
+            "is_win": is_win,
+            "session": random.choice(["NY", "TKY", "LDN"]) if mode == "session" else "ANY",
         }
         trades.append(trade)
 
-    # Sort by timestamp
-    trades.sort(key=lambda t: t["timestamp"])
     return trades
 
-def main():
-    # Session mode
-    session_dir = BASE / "session"
-    session_dir.mkdir(parents=True, exist_ok=True)
-    session_trades = generate_trades("session", num_trades=110)
-    with open(session_dir / "trades.jsonl", "w") as f:
-        for t in session_trades:
-            f.write(json.dumps(t) + "\n")
 
-    session_meta = build_metadata("Claw5MSniper", "session", session_trades)
-    with open(session_dir / "metadata.json", "w") as f:
-        json.dump(session_meta, f, indent=2)
-
-    # Manual mode
-    manual_dir = BASE / "manual"
-    manual_dir.mkdir(parents=True, exist_ok=True)
-    manual_trades = generate_trades("manual", num_trades=140)
-    with open(manual_dir / "trades.jsonl", "w") as f:
-        for t in manual_trades:
-            f.write(json.dumps(t) + "\n")
-
-    manual_meta = build_metadata("Claw5MSniperManual", "manual", manual_trades)
-    with open(manual_dir / "metadata.json", "w") as f:
-        json.dump(manual_meta, f, indent=2)
-
-    print(f"✅ Generated {len(session_trades)} session + {len(manual_trades)} manual trades")
-    print(f"📂 Output: {BASE}")
-
-def build_metadata(strategy_name, mode, trades):
-    total_pnl = sum(t["pnl_abs"] for t in trades)
-    wins = [t for t in trades if t["pnl_abs"] > 0]
+def build_metadata(trades: list, mode: str) -> dict:
+    """Build summary metadata."""
+    wins = [t for t in trades if t["is_win"]]
+    losses = [t for t in trades if not t["is_win"]]
+    total_pnl = sum(t["profit_abs"] for t in trades)
     win_rate = len(wins) / len(trades) * 100 if trades else 0
-    total = sum(t["pnl_abs"] for t in trades)
-    # Simple Sharpe approximation (assume 0 risk-free)
-    if trades:
-        returns = [t["pnl_abs"] for t in trades]
-        mean_return = sum(returns) / len(returns)
-        std_return = (sum((r - mean_return)**2 for r in returns) / len(returns))**0.5
-        sharpe = mean_return / std_return if std_return > 0 else 0
-    else:
-        sharpe = 0
+
+    # Build equity curve
+    df = pd.DataFrame(trades)
+    df["entry_dt"] = pd.to_datetime(df["entry_ts"], unit="ms", utc=True)
+    df.sort_values("entry_dt", inplace=True)
+    df["ret"] = df["profit_pct"] / 100
+    equity = (1 + df["ret"]).cumprod()
+    equity.index = df["entry_dt"]
+    equity_daily = equity.resample("1D").last().ffill()
+
+    # Max drawdown
+    rollmax = equity_daily.cummax()
+    dd = (equity_daily - rollmax) / rollmax
+    max_dd = dd.min() * 100 if not dd.empty else 0.0
+
+    # Sharpe (daily returns)
+    daily_rets = equity_daily.pct_change().dropna()
+    sharpe = (daily_rets.mean() / daily_rets.std() * np.sqrt(365)) if len(daily_rets) > 1 else 0.0
 
     return {
-        "strategy": strategy_name,
+        "strategy": "Claw5MSniper" if mode == "session" else "Claw5MSniperManual",
         "mode": mode,
-        "period_start": "2026-03-01T00:00:00Z",
-        "period_end": "2026-03-31T23:59:59Z",
-        "timeframe": "5m",
+        "timerange": "2026-03",
         "pairs": PAIRS,
         "total_trades": len(trades),
-        "total_pnl": round(total_pnl, 2),
         "win_rate": round(win_rate, 2),
+        "total_pnl_pct": round(total_pnl, 2),
+        "max_drawdown_pct": round(max_dd, 2),
         "sharpe_ratio": round(sharpe, 2),
-        "max_drawdown": round(random.uniform(8, 18), 2),  # plausible DD
-        "profit_factor": round(random.uniform(1.2, 2.0), 2),
-        "initial_balance": 10000,
-        "final_balance": round(10000 + total_pnl, 2),
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "note": "Mock data for demo — replace with real Freqtrade backtest results",
     }
+
+
+def main():
+    print("Generating mock backtest data...")
+
+    for mode, count in [("session", 110), ("manual", 140)]:
+        trades = generate_trades(mode, count)
+        meta = build_metadata(trades, mode)
+
+        out_dir = BASE / "backtests" / PERIOD / mode
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write trades.jsonl
+        with open(out_dir / "trades.jsonl", "w") as f:
+            for t in trades:
+                f.write(json.dumps(t) + "\n")
+
+        # Write metadata.json
+        with open(out_dir / "metadata.json", "w") as f:
+            json.dump(meta, f, indent=2)
+
+        # Write equity_curve.csv
+        df = pd.DataFrame(trades)
+        df["entry_dt"] = pd.to_datetime(df["entry_ts"], unit="ms", utc=True)
+        df.sort_values("entry_dt", inplace=True)
+        equity = (1 + df["profit_pct"] / 100).cumprod()
+        equity.index = df["entry_dt"]
+        equity_daily = equity.resample("1D").last().ffill()
+        equity_daily.name = "equity"
+        equity_daily.to_csv(out_dir / "equity_curve.csv")
+
+        print(f"✓ {mode}: {len(trades)} trades → {out_dir}")
+
+    print("✅ Mock data generated.")
+
 
 if __name__ == "__main__":
     main()
