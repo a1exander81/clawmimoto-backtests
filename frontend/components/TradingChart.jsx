@@ -51,50 +51,58 @@ export default function TradingChart({ sessionMeta, manualMeta }) {
         width: chartContainerRef.current.clientWidth,
         height: 500,
         layout: {
-          background: { color: '#05070a' },
+          background: { color: 'transparent' },
           textColor: '#8b949e',
+          fontFamily: "'Inter', sans-serif",
         },
         grid: {
-          vertLines: { color: '#161b22' },
-          horzLines: { color: '#161b22' },
+          vertLines: { color: 'rgba(30, 35, 43, 0.4)' },
+          horzLines: { color: 'rgba(30, 35, 43, 0.4)' },
         },
         crosshair: {
           mode: 1,
           vertLine: {
             width: 1,
-            color: '#38bdf8',
+            color: '#14f195',
             style: 2,
+            labelBackgroundColor: '#14f195',
           },
           horzLine: {
             width: 1,
-            color: '#38bdf8',
+            color: '#14f195',
             style: 2,
+            labelBackgroundColor: '#14f195',
           },
         },
         rightPriceScale: {
-          borderColor: '#30363d',
+          borderColor: 'rgba(30, 35, 43, 0.8)',
           visible: true,
         },
         timeScale: {
-          borderColor: '#30363d',
+          borderColor: 'rgba(30, 35, 43, 0.8)',
           timeVisible: true,
           secondsVisible: false,
         },
+        handleScroll: true,
+        handleScale: true,
       })
 
       const manualSeries = chart.addLineSeries({
-        color: '#f85149',
+        color: '#dc1fff', // Solana Magenta
         lineWidth: 2,
-        title: 'Manual Mode',
+        title: 'Manual Baseline',
+        priceLineVisible: false,
       })
       
       const sessionSeries = chart.addLineSeries({
-        color: '#3fb950',
+        color: '#14f195', // Solana Cyan
         lineWidth: 3,
-        title: 'Session Mode',
+        title: 'Session Engine',
+        priceLineVisible: true,
+        lastValueVisible: true,
       })
 
-      // Convert candle data to line data (using close price for equity-like view)
+      // Convert candle data to line data
       const sessionLine = sessionData.map(d => ({ time: d.time.getTime() / 1000, value: d.close }))
       const manualLine = manualData.map(d => ({ time: d.time.getTime() / 1000, value: d.close }))
 
@@ -104,7 +112,9 @@ export default function TradingChart({ sessionMeta, manualMeta }) {
       chart.timeScale().fitContent()
 
       const handleResize = () => {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth })
+        if (chartContainerRef.current) {
+          chart.applyOptions({ width: chartContainerRef.current.clientWidth })
+        }
       }
       window.addEventListener('resize', handleResize)
 

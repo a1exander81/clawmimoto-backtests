@@ -14,7 +14,6 @@ export default function ComparisonTable({ session, manual }) {
   const formatValue = (val, type) => {
     if (val === undefined || val === null) return 'N/A'
     const str = val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    if (type === 'percent' || type === 'pnl') return `${str}`
     return str
   }
 
@@ -29,9 +28,9 @@ export default function ComparisonTable({ session, manual }) {
       <table className={styles.table}>
         <thead>
           <tr>
-            <th className={styles.labelCol}>METRIC</th>
-            <th className={styles.sessionHeader}>SESSION MODE</th>
-            <th className={styles.manualHeader}>MANUAL MODE</th>
+            <th className={styles.labelCol}>STRATEGY METRICS</th>
+            <th className={styles.sessionHeader}>SESSION ENGINE</th>
+            <th className={styles.manualHeader}>MANUAL BASELINE</th>
           </tr>
         </thead>
         <tbody>
