@@ -1,5 +1,46 @@
-:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--session:#10b981;--manual:#f59e0b;--border:#334155;}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;line-height:1.6}
-a{color:#38bdf8;text-decoration:none}
-a:hover{text-decoration:underline}
+:root {
+  --bg: #05070a;
+  --surface-lv1: #0d1117;
+  --surface-lv2: #161b22;
+  --surface-lv3: #21262d;
+  --border: #30363d;
+  --border-glow: rgba(56, 189, 248, 0.2);
+  
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+  
+  --accent-blue: #38bdf8;
+  --accent-blue-dim: rgba(56, 189, 248, 0.1);
+  --accent-green: #3fb950;
+  --accent-green-dim: rgba(63, 185, 80, 0.1);
+  --accent-red: #f85149;
+  --accent-red-dim: rgba(248, 81, 73, 0.1);
+  --accent-gold: #e3b341;
+  
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent-blue);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+a:hover {
+  opacity: 0.8;
+}
