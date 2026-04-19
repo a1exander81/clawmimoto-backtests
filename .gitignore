@@ -12,6 +12,9 @@ frontend/.vercel/
 
 # Env
 .env
+.env.local
+.env.production
+.env.*.local
 
 # Data
 backtests/**/*.csv
