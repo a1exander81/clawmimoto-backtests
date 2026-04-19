@@ -1,50 +1,92 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-obsidian: #030508;
+  --color-surface-lv1: #0b0e12;
+  --color-surface-lv2: #14181f;
+  --color-surface-lv3: #1c222d;
+  --color-border-muted: #1e232b;
+
+  --color-solana-purple: #9945ff;
+  --color-solana-cyan: #14f195;
+  --color-solana-blue: #03e1ff;
+  --color-solana-magenta: #dc1fff;
+}
+
 :root {
-  /* BingX + Solana Core Palette */
-  --bg-obsidian: #05070a;
+  --bg-obsidian: #f6f8fa;
+  --surface-lv1: #ffffff;
+  --surface-lv2: #f0f2f5;
+  --surface-lv3: #e1e4e8;
+  --border-muted: #d0d7de;
+
+  --text-primary: #1c2128;
+  --text-secondary: #444d56;
+  --text-muted: #6a737d;
+  
+  --background: #f6f8fa;
+  --foreground: #1c2128;
+  --card: #ffffff;
+  --card-foreground: #1c2128;
+  --primary: var(--solana-purple);
+  --primary-foreground: #ffffff;
+  --border: var(--border-muted);
+  --input: var(--border-muted);
+  --ring: var(--solana-purple);
+}
+
+.dark {
+  --bg-obsidian: #030508;
   --surface-lv1: #0b0e12;
   --surface-lv2: #14181f;
   --surface-lv3: #1c222d;
   --border-muted: #1e232b;
-  
-  /* Solana Accent Gradients */
+
+  --text-primary: #ffffff;
+  --text-secondary: #8b949e;
+  --text-muted: #5d6771;
+
   --solana-purple: #9945ff;
   --solana-cyan: #14f195;
   --solana-blue: #03e1ff;
   --solana-magenta: #dc1fff;
-  
-  --gradient-solana: linear-gradient(135deg, var(--solana-purple) 0%, var(--solana-cyan) 100%);
-  --gradient-solana-glow: linear-gradient(135deg, rgba(153, 69, 255, 0.2) 0%, rgba(20, 241, 149, 0.2) 100%);
-  
-  /* Status Colors (BingX Style but Solana Touched) */
-  --text-primary: #ffffff;
-  --text-secondary: #8b949e;
-  --text-muted: #5d6771;
-  
-  --accent-green: #14f195; /* Solana Cyan for gains */
-  --accent-red: #ff4d4d;
-  --accent-glow-green: rgba(20, 241, 149, 0.15);
-  --accent-glow-purple: rgba(153, 69, 255, 0.15);
-  
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --glass-bg: rgba(11, 14, 18, 0.8);
+
+  /* shadcn/ui variables mapping to Solana/BingX theme */
+  --background: var(--bg-obsidian);
+  --foreground: var(--text-primary);
+  --card: var(--surface-lv1);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface-lv2);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--solana-cyan);
+  --primary-foreground: #05070a;
+  --secondary: var(--surface-lv2);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--surface-lv2);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-lv3);
+  --accent-foreground: var(--solana-cyan);
+  --destructive: #ff4d4d;
+  --destructive-foreground: #ffffff;
+  --border: var(--border-muted);
+  --input: var(--border-muted);
+  --ring: var(--solana-cyan);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased transition-colors duration-300;
+  }
 }
 
-body {
-  background: var(--bg-obsidian);
-  color: var(--text-primary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
-
-/* Scrollbar Styling */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -60,12 +102,24 @@ body {
   background: var(--solana-purple);
 }
 
-a {
-  color: var(--solana-cyan);
-  text-decoration: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-a:hover {
-  filter: drop-shadow(0 0 5px var(--solana-cyan));
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 }
