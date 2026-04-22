@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Claw Trader — Agentic AI Trading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#050810;--surface:#0C1120;--surface2:#111827;--border:rgba(255,255,255,0.07);--claw:#FF5500;--claw2:#FF8040;--teal:#00D4AA;--white:#EEF2FF;--muted:#2D3A52;--text:#7B8FAD;--mono:'JetBrains Mono',monospace}
+*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--white);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--claw);border-radius:2px}
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;padding:1.25rem 3rem;background:rgba(5,8,16,0.75);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);transition:all 0.3s}
+.nav-logo{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.08em;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:8px}
+.nav-logo .acc{color:var(--claw)}
+.nav-links{display:flex;align-items:center;gap:2.5rem;list-style:none}
+.nav-links a{color:var(--text);text-decoration:none;font-size:0.875rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover{color:var(--white)}
+.nav-btn{background:var(--claw);color:white;padding:0.55rem 1.4rem;border-radius:6px;font-weight:600;font-size:0.875rem;text-decoration:none;transition:all 0.2s;white-space:nowrap}
+.nav-btn:hover{background:var(--claw2);transform:translateY(-1px)}
+#hero{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:7rem 3rem 4rem;position:relative;overflow:hidden;gap:4rem}
+#claw-canvas{position:absolute;inset:0;z-index:0}
+.hero-grid{position:absolute;inset:0;z-index:0;background-image:linear-gradient(rgba(255,85,0,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,85,0,0.025) 1px,transparent 1px);background-size:80px 80px}
+.hero-left{position:relative;z-index:2}
+.hero-right{position:relative;z-index:2}
+.hero-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(255,85,0,0.08);border:1px solid rgba(255,85,0,0.22);padding:0.35rem 0.9rem;border-radius:100px;font-family:var(--mono);font-size:0.7rem;color:var(--claw2);letter-spacing:0.08em;margin-bottom:2rem;animation:fadeUp 0.5s ease both}
+.chip-dot{width:5px;height:5px;border-radius:50%;background:var(--claw);animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.hero-h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(3.5rem,7vw,6.5rem);line-height:0.95;letter-spacing:0.01em;margin-bottom:1.5rem;animation:fadeUp 0.5s ease 0.1s both}
+.hero-h1 .dim{color:rgba(238,242,255,0.2)}
+.hero-h1 .hot{background:linear-gradient(135deg,var(--claw),var(--claw2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-desc{font-size:1.05rem;color:var(--text);line-height:1.75;font-weight:300;max-width:460px;margin-bottom:2.5rem;animation:fadeUp 0.5s ease 0.2s both}
+.hero-actions{display:flex;gap:0.75rem;flex-wrap:wrap;animation:fadeUp 0.5s ease 0.3s both;margin-bottom:3rem}
+.btn-fill{background:var(--claw);color:white;padding:0.85rem 1.8rem;border-radius:8px;font-weight:600;font-size:0.95rem;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all 0.25s;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.btn-fill:hover{background:var(--claw2);transform:translateY(-2px);box-shadow:0 16px 40px rgba(255,85,0,0.25)}
+.btn-ghost{background:transparent;color:var(--white);border:1px solid rgba(255,255,255,0.12);padding:0.85rem 1.8rem;border-radius:8px;font-weight:500;font-size:0.95rem;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all 0.25s;backdrop-filter:blur(8px)}
+.btn-ghost:hover{border-color:var(--claw);color:var(--claw);transform:translateY(-2px)}
+.hero-numbers{display:flex;gap:2.5rem;flex-wrap:wrap;animation:fadeUp 0.5s ease 0.4s both}
+.hero-num-val{font-family:'Bebas Neue',sans-serif;font-size:2rem;line-height:1;color:var(--white)}
+.hero-num-val em{color:var(--claw);font-style:normal}
+.hero-num-lbl{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-top:3px}
+.terminal{background:rgba(12,17,32,0.92);border:1px solid rgba(255,85,0,0.15);border-radius:16px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,85,0,0.05),0 40px 80px rgba(0,0,0,0.6);backdrop-filter:blur(20px);animation:fadeUp 0.6s ease 0.5s both;position:relative}
+.terminal::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--claw),transparent)}
+.terminal-bar{display:flex;align-items:center;gap:8px;padding:0.75rem 1rem;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border)}
+.tbar-dot{width:10px;height:10px;border-radius:50%}
+.tbar-dot.r{background:#FF5F57}.tbar-dot.y{background:#FFBD2E}.tbar-dot.g{background:#28C840}
+.tbar-title{margin-left:auto;margin-right:auto;font-family:var(--mono);font-size:0.7rem;color:var(--muted)}
+.terminal-body{padding:1.25rem}
+.t-line{font-family:var(--mono);font-size:0.78rem;margin-bottom:0.5rem;line-height:1.5}
+.t-prompt{color:var(--claw)}.t-cmd{color:var(--white)}.t-out{color:var(--teal)}.t-muted{color:var(--muted)}.t-warn{color:#F59E0B}
+.scan-card{background:rgba(255,85,0,0.05);border:1px solid rgba(255,85,0,0.12);border-radius:10px;padding:1rem;margin:0.75rem 0}
+.scan-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem}
+.scan-pair{font-family:var(--mono);font-weight:700;font-size:0.82rem;color:var(--white)}
+.scan-score{background:rgba(0,212,170,0.12);color:var(--teal);padding:2px 7px;border-radius:4px;font-family:var(--mono);font-size:0.68rem;font-weight:700}
+.scan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:0.7rem}
+.sg-lbl{color:var(--muted)}.sg-val{color:var(--white);font-family:var(--mono);font-weight:700}
+.sg-val.up{color:var(--teal)}.sg-val.dn{color:#FF3B5C}
+.scan-btns{display:flex;gap:6px;margin-top:0.75rem}
+.sb{flex:1;padding:0.5rem;border-radius:6px;border:none;font-size:0.75rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer}
+.sb.ex{background:linear-gradient(135deg,var(--claw),var(--claw2));color:white}
+.sb.sk{background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--border)}
+.cursor-blink{display:inline-block;width:6px;height:12px;background:var(--claw);animation:blink 1s infinite;vertical-align:middle}
+.section{padding:7rem 3rem}
+.section-inner{max-width:1120px;margin:0 auto}
+.section-tag{font-family:var(--mono);font-size:0.7rem;color:var(--claw);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.section-tag::before{content:'';width:20px;height:1px;background:var(--claw)}
+.section-h{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,4rem);line-height:1.05;margin-bottom:1.25rem;letter-spacing:0.02em}
+.section-sub{color:var(--text);font-size:1rem;line-height:1.75;font-weight:300;max-width:520px}
+#how{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-top:3.5rem}
+.how-item{background:var(--surface);padding:2.5rem 2rem;position:relative;transition:background 0.3s}
+.how-item:hover{background:var(--surface2)}
+.how-num{font-family:'Bebas Neue',sans-serif;font-size:5rem;line-height:1;color:rgba(255,85,0,0.07);position:absolute;top:1rem;right:1rem}
+.how-icon{font-size:1.75rem;margin-bottom:1rem}
+.how-item h3{font-size:1rem;font-weight:600;margin-bottom:0.5rem}
+.how-item p{color:var(--text);font-size:0.85rem;line-height:1.65;font-weight:300}
+.sessions-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;margin-top:3.5rem}
+.sess-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2rem;position:relative;overflow:hidden;transition:all 0.3s}
+.sess-card:hover{transform:translateY(-4px);border-color:rgba(255,255,255,0.12)}
+.sess-accent{position:absolute;bottom:0;left:0;right:0;height:2px}
+.sess-card.pl .sess-accent{background:linear-gradient(90deg,#F59E0B,transparent)}
+.sess-card.lo .sess-accent{background:linear-gradient(90deg,#3B82F6,transparent)}
+.sess-card.ny .sess-accent{background:linear-gradient(90deg,#8B5CF6,transparent)}
+.sess-time{font-family:var(--mono);font-size:0.7rem;color:var(--muted);margin-bottom:1.25rem}
+.sess-icon{font-size:2rem;margin-bottom:0.75rem}
+.sess-card h3{font-family:'Bebas Neue',sans-serif;font-size:1.75rem;letter-spacing:0.05em;margin-bottom:0.5rem}
+.sess-card p{color:var(--text);font-size:0.85rem;line-height:1.65;font-weight:300;margin-bottom:1.5rem}
+.sess-meta{display:flex;gap:1.5rem}
+.sm-val{font-family:var(--mono);font-size:0.9rem;font-weight:700;color:var(--white)}
+.sm-lbl{font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em}
+#features{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.feat-layout{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;margin-top:3.5rem}
+.feat-list{display:flex;flex-direction:column;gap:1.5rem}
+.feat-item{display:flex;gap:1.25rem;align-items:flex-start;padding:1.5rem;background:var(--surface2);border:1px solid var(--border);border-radius:12px;transition:all 0.3s;cursor:default}
+.feat-item:hover{border-color:rgba(255,85,0,0.25);background:rgba(255,85,0,0.04)}
+.feat-icon{width:40px;height:40px;flex-shrink:0;background:rgba(255,85,0,0.1);border:1px solid rgba(255,85,0,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.feat-item h4{font-size:0.95rem;font-weight:600;margin-bottom:0.3rem}
+.feat-item p{color:var(--text);font-size:0.82rem;line-height:1.6;font-weight:300}
+.feat-visual{background:var(--surface2);border:1px solid var(--border);border-radius:16px;overflow:hidden;position:relative}
+.feat-visual::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--claw),transparent)}
+.fv-header{padding:0.75rem 1rem;background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.7rem;color:var(--muted);display:flex;align-items:center;gap:8px}
+.fv-dot{width:6px;height:6px;border-radius:50%;background:var(--claw)}
+.fv-body{padding:1.5rem}
+.metric-row{display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem}
+.mr-label{color:var(--text)}.mr-val{font-family:var(--mono);font-weight:700}
+.mr-val.up{color:var(--teal)}.mr-val.dn{color:#FF3B5C}.mr-val.neu{color:var(--white)}
+.mini-chart{margin-top:1rem;height:60px}
+.mini-chart svg{width:100%;height:100%}
+#cta{text-align:center;padding:8rem 3rem;position:relative;overflow:hidden}
+#cta::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(255,85,0,0.07) 0%,transparent 70%);pointer-events:none}
+.cta-inner{position:relative;z-index:1;max-width:700px;margin:0 auto}
+.cta-tag{font-family:var(--mono);font-size:0.7rem;color:var(--claw);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:1.5rem}
+.cta-h{font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,7vw,5.5rem);line-height:1;letter-spacing:0.02em;margin-bottom:1.25rem}
+.cta-sub{color:var(--text);font-size:1rem;line-height:1.75;font-weight:300;margin-bottom:2.5rem}
+.cta-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+footer{padding:2.5rem 3rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.5rem}
+.footer-logo{font-family:'Bebas Neue',sans-serif;font-size:1.25rem;letter-spacing:0.08em;color:var(--white)}
+.footer-logo span{color:var(--claw)}
+.footer-links{display:flex;gap:2rem;list-style:none}
+.footer-links a{color:var(--muted);text-decoration:none;font-size:0.8rem;transition:color 0.2s}
+.footer-links a:hover{color:var(--white)}
+.footer-copy{color:var(--muted);font-size:0.75rem;font-family:var(--mono)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.reveal{opacity:0;transform:translateY(32px);transition:all 0.6s ease}
+.reveal.vis{opacity:1;transform:translateY(0)}
+@media(max-width:900px){#hero{grid-template-columns:1fr;padding:5rem 1.5rem 3rem;text-align:center}.hero-desc{max-width:100%}.hero-actions{justify-content:center}.hero-numbers{justify-content:center}.hero-right{display:none}nav{padding:1rem 1.5rem}.nav-links{display:none}.section{padding:5rem 1.5rem}.feat-layout{grid-template-columns:1fr}footer{flex-direction:column;text-align:center}}
+</style>
+</head>
+<body>
+<nav id="nav">
+  <a href="#hero" class="nav-logo">🦞 CLAW<span class="acc">TRADER</span></a>
+  <ul class="nav-links">
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#sessions">Sessions</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="https://clawmimoto-backtests.vercel.app" target="_blank">Live Data</a></li>
+  </ul>
+  <a href="https://t.me/RightclawTrade" target="_blank" class="nav-btn">Join Channel →</a>
+</nav>
+
+<section id="hero">
+  <canvas id="claw-canvas"></canvas>
+  <div class="hero-grid"></div>
+  <div class="hero-left">
+    <div class="hero-chip"><div class="chip-dot"></div>@Clawmimoto · Live on Bybit Futures</div>
+    <h1 class="hero-h1"><span class="dim">TRADE</span><br><span class="hot">LIKE A</span><br><span class="dim">MACHINE</span></h1>
+    <p class="hero-desc">Agentic AI trading. Three surgical sessions per day. Dynamic scanners. Zero emotion. Capital stays yours — always.</p>
+    <div class="hero-actions">
+      <a href="https://t.me/Clawmimoto_bot" target="_blank" class="btn-fill">🦞 Start Trading</a>
+      <a href="https://clawmimoto-backtests.vercel.app" target="_blank" class="btn-ghost">📊 Live Dashboard</a>
+    </div>
+    <div class="hero-numbers">
+      <div><div class="hero-num-val">3<em>x</em></div><div class="hero-num-lbl">Daily Target</div></div>
+      <div><div class="hero-num-val">7<em>+</em></div><div class="hero-num-lbl">Trades / Day</div></div>
+      <div><div class="hero-num-val">100<em>%</em></div><div class="hero-num-lbl">Self-Custody</div></div>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="tbar-dot r"></div><div class="tbar-dot y"></div><div class="tbar-dot g"></div>
+        <div class="tbar-title">clawmimoto · scan engine</div>
+      </div>
+      <div class="terminal-body">
+        <div class="t-line"><span class="t-prompt">❯ </span><span class="t-cmd">clawmimoto scan --session london --ai</span></div>
+        <div class="t-line t-muted">// fetching bybit top movers...</div>
+        <div class="t-line t-muted">// filtering: vol >$50M, move 2-15%, no memes</div>
+        <div class="t-line t-out">// found 6 candidates → scoring with AI...</div>
+        <div class="scan-card">
+          <div class="scan-head"><div class="scan-pair">BTC/USDT · LONG ↑</div><div class="scan-score">AI 8/10</div></div>
+          <div class="scan-grid">
+            <div><div class="sg-lbl">Entry</div><div class="sg-val">$75,420</div></div>
+            <div><div class="sg-lbl">SL</div><div class="sg-val dn">$75,117</div></div>
+            <div><div class="sg-lbl">TP</div><div class="sg-val up">$76,533</div></div>
+            <div><div class="sg-lbl">Leverage</div><div class="sg-val">28x</div></div>
+            <div><div class="sg-lbl">RRR</div><div class="sg-val up">3.2:1</div></div>
+            <div><div class="sg-lbl">Conf.</div><div class="sg-val up">88%</div></div>
+          </div>
+          <div class="scan-btns"><button class="sb ex">✅ Execute</button><button class="sb sk">⏭ Skip</button></div>
+        </div>
+        <div class="t-line t-warn">// clawstrike: 7/8 conditions met</div>
+        <div class="t-line t-muted">// volume: 1.8x · waiting for 2x...</div>
+        <div class="t-line"><span class="t-prompt">❯ </span><span class="cursor-blink"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" class="section">
+  <div class="section-inner">
+    <div class="section-tag reveal">How It Works</div>
+    <h2 class="section-h reveal">ZERO TYPE.<br>FULL CONTROL.</h2>
+    <p class="section-sub reveal">Connect once. The agent handles everything from analysis to execution.</p>
+    <div class="how-grid reveal">
+      <div class="how-item"><div class="how-num">01</div><div class="how-icon">🔗</div><h3>Connect Bybit</h3><p>API key, read and trade only. We never touch withdrawals. Setup in under 2 minutes.</p></div>
+      <div class="how-item"><div class="how-num">02</div><div class="how-icon">⚙️</div><h3>Set Risk Level</h3><p>Conservative, Balanced, or Aggressive. AI calibrates leverage and sizing automatically.</p></div>
+      <div class="how-item"><div class="how-num">03</div><div class="how-icon">🤖</div><h3>Agent Scans</h3><p>Before each session, the agent fetches live data, scores setups, sends you the best ones.</p></div>
+      <div class="how-item"><div class="how-num">04</div><div class="how-icon">✅</div><h3>Approve or Skip</h3><p>One tap. Bot executes with pre-set SL and TP. Auto-skips if no response in 10 minutes.</p></div>
+      <div class="how-item"><div class="how-num">05</div><div class="how-icon">🛡️</div><h3>Capital Safe</h3><p>At 10% profit, SL moves to breakeven. Capital secured. Remainder rides free.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="sessions" class="section">
+  <div class="section-inner">
+    <div class="section-tag reveal">Trading Windows</div>
+    <h2 class="section-h reveal">3 SESSIONS.<br>3 EDGES.</h2>
+    <p class="section-sub reveal">Each window chosen for historically proven volatility. Precision timing, not luck.</p>
+    <div class="sessions-wrap">
+      <div class="sess-card pl reveal"><div class="sess-accent"></div><div class="sess-time">05:45 SGT · Pre-European Open</div><div class="sess-icon">🌅</div><h3>PRE-LONDON</h3><p>Front-runs EU open. Catches breakouts before the crowd. Tight SL, strict RRR gate.</p><div class="sess-meta"><div><div class="sm-val">2.5:1</div><div class="sm-lbl">Min RRR</div></div><div><div class="sm-val">BTC ETH SOL</div><div class="sm-lbl">Pairs</div></div></div></div>
+      <div class="sess-card lo reveal"><div class="sess-accent"></div><div class="sess-time">15:45 SGT · EU Session Peak</div><div class="sess-icon">🇬🇧</div><h3>LONDON</h3><p>Strongest EU volume. Trending conditions. Highest RRR requirement — only elite setups.</p><div class="sess-meta"><div><div class="sm-val">3.0:1</div><div class="sm-lbl">Min RRR</div></div><div><div class="sm-val">BTC ETH SOL BNB</div><div class="sm-lbl">Pairs</div></div></div></div>
+      <div class="sess-card ny reveal"><div class="sess-accent"></div><div class="sess-time">20:45 SGT · US Institutional Flow</div><div class="sess-icon">🗽</div><h3>NEW YORK</h3><p>Biggest moves of the day. BTC and ETH only — highest liquidity, cleanest action.</p><div class="sess-meta"><div><div class="sm-val">2.5:1</div><div class="sm-lbl">Min RRR</div></div><div><div class="sm-val">BTC ETH</div><div class="sm-lbl">Pairs</div></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="section">
+  <div class="section-inner">
+    <div class="section-tag reveal">Built Different</div>
+    <h2 class="section-h reveal">EVERY EDGE.<br>AUTOMATED.</h2>
+    <div class="feat-layout">
+      <div class="feat-list">
+        <div class="feat-item reveal"><div class="feat-icon">⚡</div><div><h4>ClawStrike</h4><p>One full-auto trade per day. Fires only when all 8 conditions align — score 8+, RRR 3+, session confirmed, volume 2x+.</p></div></div>
+        <div class="feat-item reveal"><div class="feat-icon">🔍</div><div><h4>Dynamic Scanner</h4><p>Fetches real movers from Bybit. Drop any link — TradingView, Twitter, exchange URL — AI extracts and scores it.</p></div></div>
+        <div class="feat-item reveal"><div class="feat-icon">🛡️</div><div><h4>Adaptive Stop Loss</h4><p>SL reads your last 10 trades and adjusts based on real RRR. Tightens after losses. Widens when performing well.</p></div></div>
+        <div class="feat-item reveal"><div class="feat-icon">💎</div><div><h4>CLUSDT Rewards</h4><p>Beta testers earn CLUSDT tokens based on activity and quality. Real tokenized rewards for early participants.</p></div></div>
+      </div>
+      <div class="feat-visual reveal">
+        <div class="fv-header"><div class="fv-dot"></div>live · session performance</div>
+        <div class="fv-body">
+          <div class="metric-row"><span class="mr-label">Win Rate</span><span class="mr-val up">66.7%</span></div>
+          <div class="metric-row"><span class="mr-label">Total P&L</span><span class="mr-val up">+8.45%</span></div>
+          <div class="metric-row"><span class="mr-label">Sharpe Ratio</span><span class="mr-val neu">1.82</span></div>
+          <div class="metric-row"><span class="mr-label">Max Drawdown</span><span class="mr-val dn">-3.2%</span></div>
+          <div class="metric-row"><span class="mr-label">Avg Duration</span><span class="mr-val neu">4m</span></div>
+          <div class="metric-row"><span class="mr-label">Avg Leverage</span><span class="mr-val neu">18x</span></div>
+          <div class="mini-chart">
+            <svg viewBox="0 0 300 60" preserveAspectRatio="none">
+              <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00D4AA" stop-opacity="0.3"/><stop offset="100%" stop-color="#00D4AA" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,55 L30,50 L60,45 L90,48 L120,35 L150,30 L180,25 L210,28 L240,15 L270,10 L300,5 L300,60 L0,60 Z" fill="url(#cg)"/>
+              <path d="M0,55 L30,50 L60,45 L90,48 L120,35 L150,30 L180,25 L210,28 L240,15 L270,10 L300,5" stroke="#00D4AA" stroke-width="1.5" fill="none"/>
+            </svg>
+          </div>
+          <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-top:0.5rem;text-align:right">powered by freqtrade · bybit</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="cta">
+  <div class="cta-inner">
+    <div class="cta-tag reveal">Ready to hunt?</div>
+    <h2 class="cta-h reveal">LET THE<br><span style="color:var(--claw)">AGENT</span><br>TRADE.</h2>
+    <p class="cta-sub reveal">Join @RightclawTrade for signals. Connect @Clawmimoto to start. Your capital, your custody, our edge.</p>
+    <div class="cta-actions reveal">
+      <a href="https://t.me/RightclawTrade" target="_blank" class="btn-fill">📡 Join Channel</a>
+      <a href="https://t.me/Clawmimoto_bot" target="_blank" class="btn-ghost">🤖 Open Bot</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">🦞 CLAW<span>TRADER</span></div>
+  <ul class="footer-links">
+    <li><a href="https://t.me/RightclawTrade" target="_blank">Channel</a></li>
+    <li><a href="https://t.me/Clawmimoto_bot" target="_blank">Bot</a></li>
+    <li><a href="https://clawmimoto-backtests.vercel.app" target="_blank">Dashboard</a></li>
+    <li><a href="https://github.com/a1exander81/clawmimoto_bot" target="_blank">GitHub</a></li>
+  </ul>
+  <div class="footer-copy">© 2026 Claw Trader · Not financial advice.</div>
+</footer>
+
+<script>
+// ── LOBSTER CLAW — Streaming Data Particles ──
+const canvas=document.getElementById('claw-canvas')
+const ctx=canvas.getContext('2d')
+function resize(){canvas.width=canvas.offsetWidth;canvas.height=canvas.offsetHeight}
+resize();window.addEventListener('resize',resize)
+
+const chars='01アイウエオBTCETHSOL↑↓⚡$%#LONG SHORT RRR AI+-.>'
+
+function getClawPath(cx,cy,s){
+  const upper=[[cx-80*s,cy+60*s],[cx-40*s,cy-20*s],[cx+20*s,cy-80*s],[cx+80*s,cy-100*s],[cx+120*s,cy-80*s],[cx+110*s,cy-40*s]]
+  const lower=[[cx-80*s,cy+60*s],[cx-20*s,cy+80*s],[cx+40*s,cy+60*s],[cx+100*s,cy+20*s],[cx+120*s,cy-10*s],[cx+100*s,cy-40*s]]
+  const palm=[[cx-80*s,cy+60*s],[cx-120*s,cy+40*s],[cx-150*s,cy],[cx-120*s,cy-40*s],[cx-80*s,cy-20*s]]
+  return{upper,lower,palm}
+}
+
+function ptOnPath(pts,t){
+  const tot=pts.length-1,seg=t*tot,i=Math.min(Math.floor(seg),tot-1),f=seg-i
+  const a=pts[i],b=pts[i+1]
+  return[a[0]+(b[0]-a[0])*f+(Math.random()-.5)*8,a[1]+(b[1]-a[1])*f+(Math.random()-.5)*8]
+}
+
+class P{
+  constructor(){this.reset(true)}
+  reset(init){
+    const w=canvas.width,h=canvas.height,cx=w*.62,cy=h*.5,s=Math.min(w,h)/600
+    const paths=getClawPath(cx,cy,s)
+    const w2=Math.random()
+    this.pts=w2<.4?paths.upper:w2<.75?paths.lower:paths.palm
+    this.t=init?Math.random():0
+    this.sp=.003+Math.random()*.004
+    this.ch=chars[Math.floor(Math.random()*chars.length)]
+    this.ct=0;this.ci=8+Math.floor(Math.random()*20)
+    this.sz=9+Math.random()*6;this.al=0
+    this.mal=.4+Math.random()*.5;this.lf=0;this.mlf=60+Math.random()*80
+    const pos=ptOnPath(this.pts,this.t)
+    this.x=pos[0];this.y=pos[1];this.trail=[]
+    this.isO=Math.random()>.5
+  }
+  update(){
+    this.t+=this.sp;this.lf++;this.ct++
+    if(this.ct>=this.ci){this.ch=chars[Math.floor(Math.random()*chars.length)];this.ct=0}
+    const pos=ptOnPath(this.pts,Math.min(this.t,.999))
+    this.trail.push([this.x,this.y])
+    if(this.trail.length>5)this.trail.shift()
+    this.x=pos[0];this.y=pos[1]
+    if(this.lf<20)this.al=(this.lf/20)*this.mal
+    else if(this.lf>this.mlf-20)this.al=((this.mlf-this.lf)/20)*this.mal
+    else this.al=this.mal
+    if(this.t>=1||this.lf>=this.mlf)this.reset()
+  }
+  draw(ctx){
+    if(this.al<=0)return
+    for(let i=0;i<this.trail.length;i++){
+      ctx.globalAlpha=(i/this.trail.length)*this.al*.25
+      ctx.font=`${this.sz*.7}px JetBrains Mono,monospace`
+      ctx.fillStyle=this.isO?'#FF5500':'#00D4AA'
+      ctx.fillText(this.ch,this.trail[i][0],this.trail[i][1])
+    }
+    ctx.globalAlpha=this.al
+    ctx.font=`bold ${this.sz}px JetBrains Mono,monospace`
+    ctx.fillStyle=this.isO?'#FF8040':'#00D4AA'
+    if(this.al>.6){ctx.shadowColor=this.isO?'#FF5500':'#00D4AA';ctx.shadowBlur=8}
+    ctx.fillText(this.ch,this.x,this.y)
+    ctx.shadowBlur=0;ctx.globalAlpha=1
+  }
+}
+
+const particles=Array.from({length:180},()=>new P())
+let mX=0,mY=0
+document.addEventListener('mousemove',e=>{mX=(e.clientX/innerWidth-.5);mY=(e.clientY/innerHeight-.5)})
+
+function draw(){
+  if(!canvas.width)return
+  ctx.clearRect(0,0,canvas.width,canvas.height)
+  const w=canvas.width,h=canvas.height
+  const cx=w*.62+mX*15,cy=h*.5+mY*8,s=Math.min(w,h)/600
+  const paths=getClawPath(cx,cy,s)
+  ctx.save();ctx.strokeStyle='rgba(255,85,0,0.04)';ctx.lineWidth=1.5
+  ;[paths.upper,paths.lower,paths.palm].forEach(pts=>{
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1])
+    for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1])
+    ctx.stroke()
+  })
+  ctx.restore()
+  particles.forEach(p=>{p.update();p.draw(ctx)})
+  requestAnimationFrame(draw)
+}
+draw()
+
+// Reveal
+const revEls=document.querySelectorAll('.reveal')
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach((e,i)=>{if(e.isIntersecting)setTimeout(()=>e.target.classList.add('vis'),i*80)})
+},{threshold:0.1})
+revEls.forEach(r=>obs.observe(r))
+
+// Nav
+window.addEventListener('scroll',()=>{
+  document.getElementById('nav').style.boxShadow=scrollY>60?'0 4px 40px rgba(0,0,0,0.6)':'none'
+})
+</script>
+</body>
+</html>
