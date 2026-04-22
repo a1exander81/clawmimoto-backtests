@@ -88,8 +88,7 @@ def build_metadata(trades: list, mode: str) -> dict:
     df = pd.DataFrame(trades)
     df["entry_dt"] = pd.to_datetime(df["entry_ts"], unit="ms", utc=True)
     df.sort_values("entry_dt", inplace=True)
-    df["ret"] = df["profit_pct"] / 100
-    equity = (1 + df["ret"]).cumprod()
+    equity = (1 + df["profit_pct"] / 100).cumprod()
     equity.index = df["entry_dt"]
     equity_daily = equity.resample("1D").last().ffill()
 

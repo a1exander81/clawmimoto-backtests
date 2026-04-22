@@ -59,16 +59,15 @@ def anchor_commit(period: str, commit_sha: str, keypair_path: str = None):
     print("Signing and sending transaction...")
 
     # Send 0.01 SOL to self with memo
-    # We send to the same wallet (self-transfer) just to anchor memo
     cmd = [
         "solana", "transfer",
         "--keypair", keypair_path,
-        "--recipient", json.loads(open(keypair_path).read())["publicKey"],  # self
+        "--recipient", json.loads(open(keypair_path).read())["publicKey"],
         "--amount", "0.01",
         "--allow-unfunded-recipient",
         "--fee-payer", keypair_path,
         "--memo", memo,
-        "--url", "https://api.mainnet-beta.solana.com",  # or devnet for testing
+        "--url", "https://api.mainnet-beta.solana.com",
     ]
 
     result = run_cmd(cmd)
