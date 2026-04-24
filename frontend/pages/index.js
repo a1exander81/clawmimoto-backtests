@@ -3,7 +3,37 @@ import Head from 'next/head'
 
 const GITHUB_RAW = process.env.NEXT_PUBLIC_GITHUB_RAW || 'https://raw.githubusercontent.com/a1exander81/clawmimoto-backtests/main'
 
+const SUPABASE_URL = "https://aauypnqsmyxzacchbiya.supabase.co"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhdXlwbnFzbXl4emFjY2hiaXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5Nzg2MDUsImV4cCI6MjA5MjU1NDYwNX0.H8RbnYbUb55jr0RnOVpca2wkYgv_jKs8NuUHjruqWls"
+
 async function fetchLiveData() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/trades?is_open=eq.false&order=close_date.desc&limit=200`,
+      { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
+    )
+    const trades = res.ok ? await res.json() : []
+    const wins = trades.filter(t => (t.profit_ratio||0) > 0).length
+    const losses = trades.filter(t => (t.profit_ratio||0) <= 0).length
+    const total_pnl = trades.reduce((sum,t) => sum + (t.profit_ratio||0), 0)
+    const meta = {
+      total_trades: trades.length,
+      winning_trades: wins,
+      losing_trades: losses,
+      total_pnl_pct: total_pnl * 100,
+      avg_pnl_pct: trades.length > 0 ? (total_pnl/trades.length)*100 : 0,
+      win_rate: trades.length > 0 ? (wins/trades.length*100) : 0,
+      last_updated: new Date().toISOString()
+    }
+    const normalized = trades.map(t => ({
+      ...t,
+      profit_pct: (t.profit_ratio||0)*100,
+    }))
+    return { meta, trades: normalized }
+  } catch(e) {
+    console.error("Supabase error:", e)
+  }
+  // fallback
   const period = new Date().toISOString().slice(0, 7)
   const base = `${GITHUB_RAW}/backtests/${period}/live`
   try {
